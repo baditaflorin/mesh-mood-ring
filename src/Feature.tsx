@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNamedPeer, type MeshConfig, type YRoom } from "@baditaflorin/mesh-common";
+import {
+  usePerPeerValue,
+  useNamedPeer,
+  type MeshConfig,
+  type YRoom,
+} from "@baditaflorin/mesh-common";
 
 type Props = { room: YRoom | null; config: MeshConfig };
 type Mood = { hue: number; ts: number };
@@ -20,7 +25,8 @@ export function Feature({ room, config }: Props) {
 
 function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
   const { name, setName, nameOf } = useNamedPeer(config, room);
-  const [, rerender] = useState(0);
+  const moods = usePerPeerValue<Mood>(room, "moods", { hue: NEUTRAL_HUE, ts: 0 });
+
   const [myHue, setMyHue] = useState<number>(() => {
     try {
       const saved = localStorage.getItem(`${config.storagePrefix}:hue`);
@@ -31,34 +37,17 @@ function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
     return Math.floor(Math.random() * 360);
   });
 
-  // Subscribe to moods map; bump a rerender counter on any change.
   useEffect(() => {
-    const m = room.doc.getMap<Mood>("moods");
-    const cb = () => rerender((n) => n + 1);
-    m.observe(cb);
-    return () => m.unobserve(cb);
-  }, [room]);
-
-  // Write my hue into the room whenever it changes (in-place set, no seeding).
-  useEffect(() => {
-    const m = room.doc.getMap<Mood>("moods");
-    const cur = m.get(room.peerId);
-    if (!cur || cur.hue !== myHue) {
-      m.set(room.peerId, { hue: myHue, ts: Date.now() });
-    }
+    moods.setMy({ hue: myHue, ts: Date.now() });
     try {
       localStorage.setItem(`${config.storagePrefix}:hue`, String(myHue));
     } catch {
       /* ignore */
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myHue, room, config.storagePrefix]);
 
-  // Recompute inline — never useMemo on y.size.
-  const moodsMap = room.doc.getMap<Mood>("moods");
-  const entries: Array<[string, Mood]> = [];
-  moodsMap.forEach((v, k) => {
-    if (v && typeof v.hue === "number") entries.push([k, v]);
-  });
+  const entries = moods.entries.filter(([, v]) => v && typeof v.hue === "number");
   const hues = entries.map(([, v]) => v.hue);
   let avg = NEUTRAL_HUE;
   if (hues.length > 0) {
