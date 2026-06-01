@@ -63,6 +63,10 @@ function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
       <div className="mood-bg" aria-hidden="true" style={{ background: `hsl(${avg} 70% 25%)` }} />
       <header className="mood-header">
         <h1>mood ring</h1>
+        <p className="mood-tagline">
+          Drag the slider to pick your color. Everyone&rsquo;s hues blend into one shared
+          background.
+        </p>
         <p className="mood-status">
           {entries.length} mood{entries.length === 1 ? "" : "s"} · {present}{" "}
           {present === 1 ? "peer" : "peers"}
@@ -115,6 +119,12 @@ function Body({ room, config }: { room: YRoom; config: MeshConfig }) {
           );
         })}
       </div>
+
+      {present === 1 && (
+        <p className="mood-hint">
+          Just you so far — share the 📡 invite (or open a second tab) to blend hues with someone.
+        </p>
+      )}
     </div>
   );
 }
